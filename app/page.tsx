@@ -92,7 +92,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-zinc-950 p-4">
-      <h1 className="text-3xl font-bold text-white mb-8 mt-4">Robin's Vision AI</h1>
+      <h1 className="text-3xl font-bold text-white mb-8 mt-4">Sumang's Vision AI</h1>
       
       <div className="flex-1 w-full max-w-2xl flex flex-col gap-4 overflow-y-auto mb-4 p-4 rounded-lg bg-zinc-900/50">
         {messages.map((msg: any, index) => (
