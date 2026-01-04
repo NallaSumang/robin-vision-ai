@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Paperclip, X } from "lucide-react"; 
 import ReactMarkdown from "react-markdown"; 
 
+// 🛑 YOUR NEW BACKEND URL GOES HERE
+const BACKEND_URL = "https://my-ai-brain-nyj6.onrender.com";
+
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -17,7 +20,8 @@ export default function Home() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/history");
+        // 🔥 UPDATED URL
+        const res = await fetch(`${BACKEND_URL}/history`);
         const data = await res.json();
         const formatted = data.map((msg: any) => ({
           role: msg.role === "model" ? "ai" : "user",
@@ -45,7 +49,6 @@ export default function Home() {
   const handleSend = async () => {
     if (!input.trim() && !selectedImage) return;
 
-    // Add User Message
     const displayContent = selectedImage 
       ? `![Image](${selectedImage})\n\n${input}` 
       : input;
@@ -61,7 +64,8 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/chat", {
+      // 🔥 UPDATED URL
+      const response = await fetch(`${BACKEND_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -98,7 +102,6 @@ export default function Home() {
               }`}>
               <ReactMarkdown 
                 components={{
-                    // FIX IS HERE: We check if props.src exists before rendering
                     img: ({node, ...props}) => props.src ? <img className="max-w-full rounded-lg mb-2" {...props} /> : null,
                     code: ({node, ...props}) => <code className="bg-black/30 rounded px-1" {...props} />
                 }}
@@ -108,7 +111,7 @@ export default function Home() {
             </div>
           </div>
         ))}
-        {isLoading && <div className="text-zinc-500 text-sm animate-pulse">Analyzing...</div>}
+        {isLoading && <div className="text-zinc-500 text-sm animate-pulse">Thinking...</div>}
       </div>
 
       <div className="w-full max-w-2xl flex flex-col gap-2">
@@ -140,13 +143,11 @@ export default function Home() {
             <Input 
               value={input}
               onChange={(e) => setInput(e.target.value)} 
-              placeholder="Describe this image..." 
+              placeholder="Type a message..." 
               className="bg-zinc-900 text-white border-zinc-700"
               onKeyDown={(e) => e.key === "Enter" && handleSend()} 
             />
-            <Button onClick={handleSend} disabled={isLoading || (!input && !selectedImage)}>
-                Send
-            </Button>
+            <Button onClick={handleSend} disabled={isLoading}>Send</Button>
         </div>
       </div>
     </main>
