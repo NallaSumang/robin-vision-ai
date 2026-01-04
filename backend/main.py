@@ -24,7 +24,7 @@ app = FastAPI()
 
 # --- MODEL SELECTOR (CHANGE THIS IF IT FAILS) ---
 # OPTION 1: Standard Flash (Try this first)
-MODEL_NAME = "gemini-2.0-flash-lite"
+MODEL_NAME = "gemini-2.5-flash"
 
 # OPTION 2: The Pro Model (Smarter, but slower)
 # MODEL_NAME = "gemini-2.5-pro"
