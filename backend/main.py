@@ -1,0 +1,132 @@
+import json
+import os
+import base64
+import io
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from google import genai
+from google.genai import types
+from PIL import Image
+from dotenv import load_dotenv
+
+# --- 1. SETUP & SECURITY ---
+# FORCE LOAD: Find .env in the same folder as this script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(current_dir, ".env")
+load_dotenv(env_path)
+
+# Get the key securely
+API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Safety Check
+if not API_KEY:
+    print(f"❌ Error: Looking for key in: {env_path}")
+    raise ValueError(
+        "❌ No API Key found! Make sure you have a .env file in the backend folder.")
+
+client = genai.Client(api_key=API_KEY)
+app = FastAPI()
+
+# --- 2. FILE SYSTEM (HISTORY) ---
+HISTORY_FILE = "chat_history.json"
+local_chat_history = []
+
+
+def load_history_from_file():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r") as f:
+                data = json.load(f)
+                cleaned_data = []
+                for msg in data:
+                    if "parts" in msg:
+                        new_parts = []
+                        for part in msg["parts"]:
+                            if isinstance(part, str):
+                                new_parts.append({"text": part})
+                            elif isinstance(part, dict) and "text" in part:
+                                new_parts.append(part)
+                        msg["parts"] = new_parts
+                    cleaned_data.append(msg)
+                print(f"✅ Loaded {len(cleaned_data)} messages.")
+                return cleaned_data
+        except Exception as e:
+            print(f"⚠️ Error loading file: {e}")
+    return []
+
+
+def save_history_to_file():
+    try:
+        with open(HISTORY_FILE, "w") as f:
+            json.dump(local_chat_history, f, indent=2)
+    except Exception as e:
+        print(f"❌ Error saving history: {e}")
+
+
+# --- 3. INITIALIZE BRAIN ---
+local_chat_history = load_history_from_file()
+
+sys_instruct = "You are a helpful AI assistant. You can see images."
+
+chat_session = client.chats.create(
+    model="gemini-1.5-flash",
+    config=types.GenerateContentConfig(
+        system_instruction=sys_instruct,
+        temperature=0.7
+    ),
+    history=local_chat_history
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ChatRequest(BaseModel):
+    message: str
+    image: str | None = None
+
+
+@app.get("/history")
+def get_history():
+    return load_history_from_file()
+
+
+@app.post("/chat")
+def chat_endpoint(request: ChatRequest):
+    try:
+        user_parts = [{"text": request.message}]
+
+        if request.image:
+            print("🖼️ Image received! Processing...")
+            if "," in request.image:
+                base64_data = request.image.split(",")[1]
+            else:
+                base64_data = request.image
+
+            image_bytes = base64.b64decode(base64_data)
+            img = Image.open(io.BytesIO(image_bytes))
+
+            response = chat_session.send_message([request.message, img])
+            user_parts.append({"text": "[User uploaded an image]"})
+
+        else:
+            response = chat_session.send_message(request.message)
+
+        ai_text = response.text
+
+        local_chat_history.append({"role": "user", "parts": user_parts})
+        local_chat_history.append(
+            {"role": "model", "parts": [{"text": ai_text}]})
+        save_history_to_file()
+
+        return {"reply": ai_text}
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return {"reply": f"Error processing request: {e}"}
