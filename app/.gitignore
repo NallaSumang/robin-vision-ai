@@ -1,0 +1,15 @@
+# Security: Keep secrets offline
+backend/.env
+.env
+.DS_Store
+
+# Python junk
+__pycache__/
+*.pyc
+venv/
+
+# Node junk (too heavy to upload)
+node_modules/
+.next/
+out/
+build/
